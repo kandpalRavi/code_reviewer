@@ -1,2 +1,13 @@
-"backend/node_modules/" 
-"frontend/node_modules/" 
+# Node modules
+backend/node_modules/
+frontend/node_modules/
+
+# Python cache and env
+__pycache__/
+*.py[cod]
+env/
+venv/
+
+# IDE files
+.idea/
+.vscode/
