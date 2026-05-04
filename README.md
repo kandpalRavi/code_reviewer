@@ -249,14 +249,3 @@ gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
 - Add new analyzers in `app/services/`
 - Create new routes in `app/routes/`
 
-## License
-
-MIT License - Feel free to use for your projects!
-
-## Support
-
-For issues or questions, please check the documentation or create an issue.
-
----
-
-**Happy Coding! 🎉**
