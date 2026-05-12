@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts'
 import { FaHistory, FaChartLine, FaCode, FaTrash, FaBalanceScale, FaSyncAlt, FaDatabase } from 'react-icons/fa'
 
-const API = 'http://localhost:8000/api'
+const API = '/api'
 
 const LANG_COLORS = { python: '#3b82f6', javascript: '#f59e0b', java: '#ef4444', unknown: '#6b7280' }
 const SCORE_COLORS = { avg_quality: '#22c55e', avg_security: '#3b82f6', avg_complexity: '#f59e0b', avg_overall: '#a855f7' }
@@ -24,6 +24,12 @@ export default function HistoryDashboard({ userId }) {
   const [compareB, setCompareB] = useState(null)
 
   const fetchData = async () => {
+    if (!userId) {
+      setHistory([])
+      setTrends(null)
+      setLoading(false)
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -84,6 +90,22 @@ export default function HistoryDashboard({ userId }) {
     { id: 'history', label: '📋 History', icon: FaHistory },
     { id: 'compare', label: '⚖️ Compare', icon: FaBalanceScale },
   ]
+
+  if (!userId) {
+    return (
+      <div className="bg-gray-50 min-h-screen">
+        <div className="container mx-auto px-4 py-16 max-w-3xl">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+            <FaHistory className="text-5xl text-gray-300 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">History is for signed-in users</h2>
+            <p className="text-gray-600 mb-6">
+              Continue as a guest to analyze code without saving anything, or sign in to keep your analysis history and trends.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen">

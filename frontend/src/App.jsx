@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from './context/AuthContext'
 import Header from './components/Header'
@@ -12,11 +12,11 @@ import BatchAnalysisResults from './components/BatchAnalysisResults'
 import LoadingAnimation from './components/LoadingAnimation'
 import ToastContainer from './components/ToastContainer'
 
-const API = 'http://localhost:8000/api'
+const API = '/api'
 
 function App() {
   const { user, loading: authLoading } = useAuth()
-  const [authed, setAuthed] = useState(false) // true once user passes auth screen
+  const [authView, setAuthView] = useState(null)
 
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('python')
@@ -24,6 +24,12 @@ function App() {
   const [results, setResults] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [toasts, setToasts] = useState([])
+
+  useEffect(() => {
+    if (!user && activeTab === 'history') {
+      setActiveTab('dashboard')
+    }
+  }, [user, activeTab])
 
   const showToast = (message, type = 'info') => {
     const id = Date.now() + Math.random()
@@ -33,11 +39,6 @@ function App() {
 
   // Still checking localStorage
   if (authLoading) return null
-
-  // Show auth screen until user passes it
-  if (!authed && !user) {
-    return <AuthPage onSuccess={() => setAuthed(true)} />
-  }
 
   const handleAnalyze = async (codeToAnalyze = null, langToAnalyze = null) => {
     const codeContent = codeToAnalyze || code
@@ -92,7 +93,8 @@ function App() {
     setIsAnalyzing(true)
     setResults(null)
     try {
-      const res = await fetch(`${API}/analyze/repo`, {
+      const userParam = user?.id ? `?user_id=${user.id}` : ''
+      const res = await fetch(`${API}/analyze/repo${userParam}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ github_url: githubUrl.trim(), max_files: 250, security_deep_scan: true, performance_hints: true })
@@ -110,14 +112,48 @@ function App() {
 
   const tabs = [
     { id: 'dashboard', label: '🏠 Dashboard' },
-    { id: 'history', label: '📊 History & Trends' },
+    ...(user ? [{ id: 'history', label: '📊 History & Trends' }] : []),
     { id: 'home', label: '📋 Analyzer' },
     { id: 'editor', label: '✏️ Code Editor' },
   ]
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      <Header
+        onHomeClick={() => setActiveTab('dashboard')}
+        onLoginClick={() => setAuthView('login')}
+        onSignupClick={() => setAuthView('signup')}
+      />
+
+      <AnimatePresence>
+        {authView && (
+          <motion.div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center px-4 py-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setAuthView(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md"
+            >
+              <AuthPage
+                initialMode={authView}
+                onClose={() => setAuthView(null)}
+                onSuccess={() => {
+                  setAuthView(null)
+                  setActiveTab('dashboard')
+                }}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Navigation Tabs */}
       <motion.div className="bg-white border-b border-gray-200 shadow-sm"
@@ -155,7 +191,7 @@ function App() {
 
           {activeTab === 'history' && (
             <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <HistoryDashboard userId={user?.id} />
+              <HistoryDashboard userId={user?.id} onLoginClick={() => setAuthView('login')} />
             </motion.div>
           )}
 

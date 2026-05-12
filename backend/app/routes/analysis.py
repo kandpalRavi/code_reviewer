@@ -161,7 +161,7 @@ async def analyze_batch_code(request: BatchAnalysisRequest):
 
 
 @router.post("/analyze/repo", response_model=dict)
-async def analyze_github_repo(request: GitHubRepoAnalysisRequest):
+async def analyze_github_repo(request: GitHubRepoAnalysisRequest, background_tasks: BackgroundTasks, user_id: str = None):
     """Analyze supported source files from a public GitHub repository."""
     try:
         archive_url = _build_github_archive_url(request.github_url)
@@ -189,6 +189,18 @@ async def analyze_github_repo(request: GitHubRepoAnalysisRequest):
             "url": request.github_url,
             "analyzed_files": len(files)
         }
+
+        db = get_database()
+        if db is not None:
+            background_tasks.add_task(
+                save_analysis_to_db,
+                db,
+                code="",
+                result=result,
+                user_id=user_id,
+                source=result["source"],
+            )
+
         return result
     except HTTPException:
         raise
@@ -207,16 +219,21 @@ async def analyze_github_repo(request: GitHubRepoAnalysisRequest):
         raise HTTPException(status_code=500, detail="Error analyzing GitHub repository")
 
 
-async def save_analysis_to_db(db, code: str, result: dict, user_id: str = None):
+async def save_analysis_to_db(db, code: str, result: dict, user_id: str = None, source: dict = None):
     """Save analysis result to database"""
     try:
-        metrics = result.get("metrics", {})
+        if not user_id:
+            return
+
         doc = {
             "user_id": user_id,
-            "code_snippet": code[:500],  # Save first 500 chars
-            "language": result.get("language", "unknown"),
-            "metrics": metrics,
-            "issue_count": len(result.get("issues", [])),
+            "analysis_type": source.get("type") if source else "code",
+            "source_url": source.get("url") if source else None,
+            "source_files": source.get("analyzed_files") if source else None,
+            "code_snippet": code[:500] if code else (source.get("url") if source else ""),
+            "language": result.get("language", "batch" if result.get("mode") == "batch" else "unknown"),
+            "metrics": result.get("metrics", result.get("summary", {})),
+            "issue_count": result.get("summary", {}).get("total_issues", len(result.get("issues", []))),
             "created_at": datetime.utcnow()
         }
         await db.analysis_history.insert_one(doc)

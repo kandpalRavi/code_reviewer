@@ -18,6 +18,9 @@ async def get_history(limit: int = 20, user_id: str = None):
     if db is None:
         raise HTTPException(status_code=503, detail="Database not connected")
 
+    if not user_id:
+        return {"history": [], "count": 0}
+
     try:
         query = {}
         if user_id:
@@ -50,6 +53,14 @@ async def get_history_trends(days: int = 30, user_id: str = None):
 
     if db is None:
         raise HTTPException(status_code=503, detail="Database not connected")
+
+    if not user_id:
+        return {
+            "trends": [],
+            "languages": {},
+            "total_in_period": 0,
+            "days": days
+        }
 
     try:
         since = datetime.utcnow() - timedelta(days=days)
